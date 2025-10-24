@@ -15,6 +15,10 @@ namespace Push
 {
     public class PushController : MonoBehaviour
     {
+        public float CooldownTime => PushPlugin.Instance.Config.PushPullCooldown;
+        public float MaxStrength => PushPlugin.Instance.Config.MaxStrength;
+        public float Range => PushPlugin.Instance.Config.PushPullRange;
+        
         public ReferenceHub ReferenceHub => GetComponent<ReferenceHub>();
 
         public Player Player => Player.Get(ReferenceHub);
@@ -28,59 +32,82 @@ namespace Push
 
         public void PressPush()
         {
-            Logger.Debug("PressPush called");
-            if(Time.time-LastPushTime < 1f) return;
-            LastPushTime = Time.time;
-            
-            Player target = GetLookedAtPlayer(Player, 5f);
-            Logger.Debug("Found target");
-            if (target == null) return;
-            Logger.Debug("Target is not null");
-            if (target.RoleBase is IFpcRole fpcRole)
+            try
             {
-                MoveTarget(target, false);
+                Logger.Debug("PressPush called",PushPlugin.Instance.Config.Debug);
+                if(Time.time-LastPushTime < CooldownTime) return;
+                LastPushTime = Time.time;
+            
+                Player target = GetLookedAtPlayer(Player, Range);
+                if (target == null) return;
+                if (target.RoleBase is IFpcRole fpcRole)
+                {
+                    MoveTarget(target, false);
+                }
+                Logger.Debug("Target push complete",PushPlugin.Instance.Config.Debug);
+            } catch (Exception e)
+            {
+                Logger.Error("Error in PressPush: " + e);
             }
-            Logger.Debug("Target push complete");
+            
         }
 
         public void PressPull()
         {
-            Logger.Debug("PressPull called");
-            if(Time.time-LastPushTime < 1f) return;
-            LastPushTime = Time.time;
-            
-            Player target = GetLookedAtPlayer(Player, 5f);
-            if (target == null) return;
-            if (target.RoleBase is IFpcRole fpcRole)
+            try
             {
-                MoveTarget(target, true);
+                Logger.Debug("PressPull called",PushPlugin.Instance.Config.Debug);
+                if(Time.time-LastPushTime < CooldownTime) return;
+                LastPushTime = Time.time;
+            
+                Player target = GetLookedAtPlayer(Player, Range);
+                if (target == null) return;
+                if (target.RoleBase is IFpcRole fpcRole)
+                {
+                    MoveTarget(target, true);
+                }
+            } catch (Exception e)
+            {
+                Logger.Error("Error in PressPull: " + e);
             }
         }
 
 
         public void MoveTarget(Player target, bool isPull)
         {
-            Logger.Debug("MoveTarget called");
+            Logger.Debug("MoveTarget called",PushPlugin.Instance.Config.Debug);
             if (target.RoleBase is IFpcRole fpcRole)
             {
-                float resistance = 1f;
+                Logger.Debug("Target is FPC role",PushPlugin.Instance.Config.Debug);
+                float factor = 1f;
                 if (target.Role.GetFaction() == Faction.SCP)
                 {
-                    resistance = 0.2f;
+                    factor = 0.5f;
                 }
-                else if(target.Role.GetFaction() == Faction.FoundationStaff || target.Role.GetFaction() == Faction.FoundationEnemy)
+                else if(target.Role.IsAlive())
                 {
-                    target.Inventory.TryGetBodyArmor(out BodyArmor bodyArmor);
-                    if (bodyArmor != null)
+                    
+                    if (target.Inventory.TryGetBodyArmor(out BodyArmor bodyArmor))
                     {
-                        resistance = bodyArmor.MovementSpeedMultiplier;
+                        switch (bodyArmor.ItemTypeId)
+                        {
+                            case ItemType.ArmorLight:
+                                factor = 0.7f;
+                                break;
+                            case ItemType.ArmorCombat:
+                                factor = 0.6f;
+                                break;
+                            case ItemType.ArmorHeavy:
+                                factor = 0.5f;
+                                break;
+                        }
                     }
                 }
                 Vector3 forceDirection = Player.ReferenceHub.PlayerCameraReference.forward;
-                float force = 5f * resistance;
-                    
-                fpcRole.FpcModule.Motor.ReceivedPosition = new RelativePosition(target.Position + forceDirection * force * (isPull ? -1f : 1f));
-                    
+                float force = MaxStrength * factor;
+                Logger.Debug("Applying force: " + force + " factor: " + factor,PushPlugin.Instance.Config.Debug);
+                fpcRole.FpcModule.Motor.ReceivedPosition = new RelativePosition(target.Position + forceDirection.NormalizeIgnoreY() * force * (isPull ? -1f : 1f));
+                
                 OverlayAnimationsSubcontroller subcontroller;
                 if (!(ReferenceHub.roleManager.CurrentRole is IFpcRole currentRole) ||
                     !(currentRole.FpcModule.CharacterModelInstance is AnimatedCharacterModel
@@ -91,6 +118,7 @@ namespace Push
                     return;
                 }
                 // Hardcoded value, this SearchCompleteAnimation in the array
+                Logger.Debug("Animating player overlay",PushPlugin.Instance.Config.Debug);
                 subcontroller._overlayAnimations[1].OnStarted();
                 subcontroller._overlayAnimations[1].SendRpc();
                    
@@ -99,29 +127,28 @@ namespace Push
         
         public Player GetLookedAtPlayer(Player player,float range)
         {
-            Logger.Debug("GetLookedAtPlayer called");
+            Logger.Debug("GetLookedAtPlayer called",PushPlugin.Instance.Config.Debug);
             var startPosition = player.ReferenceHub.PlayerCameraReference.position;
             var direction = player.ReferenceHub.PlayerCameraReference.forward;
-            DrawableLines.IsDebugModeEnabled = true;
-            DrawableLines.GenerateLine(1f,Color.red,startPosition, startPosition+ direction * range);
+            if (PushPlugin.Instance.Config.Debug)
+            {
+                DrawableLines.IsDebugModeEnabled = true;
+                DrawableLines.GenerateLine(1f,Color.red,startPosition, startPosition+ direction * range);
+            }
             
             var hits = Physics.RaycastAll(startPosition, direction, range).OrderBy(hit => hit.distance);
 
             foreach (var hit in hits)
             {
-                Logger.Debug(hit.collider.gameObject.transform.root.gameObject.name);
                 if (hit.collider.gameObject.transform.root.gameObject ==
                     player.GameObject.transform.root.gameObject)
                     continue;
-                Logger.Debug("Checking non-self hit");
                 if (hit.transform.root.gameObject == null)
                 {
-                    Logger.Debug("Null GameObject");
                     continue;
                 }
                 if (hit.transform.root.gameObject.TryGetComponent<ReferenceHub>(out var referenceHub))
                 {
-                    Logger.Debug("Found Player: "+referenceHub.nicknameSync._cleanDisplayName);
                     return Player.Get(referenceHub);
                 }
                     
