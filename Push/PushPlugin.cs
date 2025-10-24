@@ -71,14 +71,14 @@ namespace Push
         
 #if EXILED
         public override string Name { get; } = "Push.EXILED";
-            public override Version RequiredExiledVersion { get; } = new Version(9, 9, 2);
+            public override Version RequiredExiledVersion { get; } = new Version(9, 10, 0);
 #else 
         public override string Name { get; } = "Push.LabAPI";
         public override string Description { get; } = "A plugin for LabApi that allows you to push other players a bit.";
         public override Version RequiredApiVersion { get; } = new Version(LabApiProperties.CompiledVersion);
 #endif
         
-        public string githubRepo = "tayjay/Push";
+        public string githubRepo = "tayjay/Push-SCPSL";
         
     }
     

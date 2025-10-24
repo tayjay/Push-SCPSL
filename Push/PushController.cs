@@ -35,6 +35,7 @@ namespace Push
             try
             {
                 Logger.Debug("PressPush called",PushPlugin.Instance.Config.Debug);
+                if(Player.IsDisarmed) return;
                 if(Time.time-LastPushTime < CooldownTime) return;
                 LastPushTime = Time.time;
             
@@ -57,6 +58,7 @@ namespace Push
             try
             {
                 Logger.Debug("PressPull called",PushPlugin.Instance.Config.Debug);
+                if(Player.IsDisarmed) return;
                 if(Time.time-LastPushTime < CooldownTime) return;
                 LastPushTime = Time.time;
             
