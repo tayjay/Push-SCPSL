@@ -6,6 +6,7 @@ An SCP Secret Lab plugin that adds pushing and pulling of other players to the g
 ## Features:
 - Push Keybind (Z) - Push a player away from you (Can be disabled)
 - Pull Keybind (X) - Pull a player towards you (Can be disabled)
+- Character animates when pushing/pulling if their model allows it
 - Cooldown on push/pull to prevent spamming (Configurable)
 - SCPs are more resistant by movement
 - Higher tier of armour makes you more resistant to movement
