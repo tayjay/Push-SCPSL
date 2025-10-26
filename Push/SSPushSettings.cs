@@ -12,13 +12,14 @@ namespace Push
         public void Activate()
         {
             
-            string pushName = (PushPlugin.Instance.Config.EnablePushKeybind ? $"{PushPlugin.Instance.Config.Translations.SSPushLabel}" : " (Push Disabled)");
-            string pullName =  (PushPlugin.Instance.Config.EnablePullKeybind ? $"{PushPlugin.Instance.Config.Translations.SSPullLabel}" : " (Pull Disabled)");
+            string pushName = (PushPlugin.Instance.Config.EnablePushKeybind ? $"{PushPlugin.Instance.Config.Translations.SSPushLabel}" : "[REDACTED]");
+            string pullName =  (PushPlugin.Instance.Config.EnablePullKeybind ? $"{PushPlugin.Instance.Config.Translations.SSPullLabel}" : "[REDACTED]");
             
             
             pushKeybind = new SSKeybindSetting(null,pushName, PushPlugin.Instance.Config.DefaultPushKeybind,hint:PushPlugin.Instance.Config.Translations.SSPushHint);
             pullKeybind = new SSKeybindSetting(null,pullName, PushPlugin.Instance.Config.DefaultPullKeybind,hint:PushPlugin.Instance.Config.Translations.SSPullHint);
 
+            
             var settings = new ServerSpecificSettingBase[3]
             {
                 new SSGroupHeader(PushPlugin.Instance.Config.Translations.SSGroupLabel),

@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using DrawableLine;
 using InventorySystem.Items.Armor;
 using LabApi.Features.Wrappers;
+using MEC;
 using PlayerRoles;
 using PlayerRoles.FirstPersonControl;
 using PlayerRoles.FirstPersonControl.Thirdperson;
@@ -105,10 +107,14 @@ namespace Push
                         }
                     }
                 }
-                Vector3 forceDirection = Player.ReferenceHub.PlayerCameraReference.forward;
+                Vector3 forceDirection = Player.ReferenceHub.PlayerCameraReference.forward.NormalizeIgnoreY();
                 float force = MaxStrength * factor;
                 Logger.Debug("Applying force: " + force + " factor: " + factor,PushPlugin.Instance.Config.Debug);
-                fpcRole.FpcModule.Motor.ReceivedPosition = new RelativePosition(target.Position + forceDirection.NormalizeIgnoreY() * force * (isPull ? -1f : 1f));
+                if(target.IsNpc)
+                    fpcRole.FpcModule.Motor.ReceivedPosition = new RelativePosition(target.Position + forceDirection.NormalizeIgnoreY() * force * (isPull ? -1f : 1f));
+                WaypointToy Waypoint = WaypointToy.Create(target.Position);
+                Waypoint.BoundsSize = new Vector3(0.2f, 0.1f, 0.2f);
+                Timing.RunCoroutine(DragCoroutine(Waypoint, target.Position + forceDirection * force * (isPull ? -1f : 1f), 0.3f));
                 
                 OverlayAnimationsSubcontroller subcontroller;
                 if (!(ReferenceHub.roleManager.CurrentRole is IFpcRole currentRole) ||
@@ -125,6 +131,22 @@ namespace Push
                 subcontroller._overlayAnimations[1].SendRpc();
                    
             }
+        }
+        
+        public IEnumerator<float> DragCoroutine(WaypointToy waypoint, Vector3 targetPosition, float duration)
+        {
+            Vector3 startPosition = waypoint.Position;
+            float elapsed = 0f;
+
+            while (elapsed < duration)
+            {
+                waypoint.Position = Vector3.Lerp(startPosition, targetPosition, elapsed / duration);
+                elapsed += Timing.DeltaTime;
+                yield return Timing.WaitForOneFrame;
+            }
+
+            waypoint.Position = targetPosition;
+            waypoint.Destroy();
         }
         
         public Player GetLookedAtPlayer(Player player,float range)
@@ -158,5 +180,6 @@ namespace Push
 
             return null;
         }
+        
     }
 }
